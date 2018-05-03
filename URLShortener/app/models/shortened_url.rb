@@ -19,6 +19,16 @@ class ShortenedURL < ApplicationRecord
   foreign_key: :user_id,
   class_name: :User
 
+  has_many :visits,
+  primary_key: :id,
+  foreign_key: :short_url_id,
+  class_name: :Visit
+
+  has_many :visitors,
+  -> { distinct }, #lambda literal; functionally = to Proc.new {distict}
+  through: :visits,
+  source: :user
+
 
   def self.generate(user, long_url)
     ShortenedURL.create!({
@@ -34,6 +44,26 @@ class ShortenedURL < ApplicationRecord
       code = SecureRandom.urlsafe_base64
     end
     code
+  end
+
+  def num_clicks
+    self.visits.length
+  end
+
+  def num_uniques
+    # Visit.select('visits.user_id')
+    # .where('visits.short_url_id = ?', self.id)
+    # .distinct
+    # .count
+
+    # self.visitors.map { |visitor| visitor.id }.uniq.length
+    self.visitors.length
+  end
+
+  def num_recent_uniques
+    self.visitors
+    .where('visits.created_at BETWEEN ? AND ?', 10.minutes.ago, Time.now)
+    .count
   end
 
 end
